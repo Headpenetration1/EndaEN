@@ -5,8 +5,10 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Animated } from 'react-native';
+import { View, Animated, Platform } from 'react-native';
 import Svg, { Circle, Path, G, Defs, LinearGradient, Stop, Ellipse } from 'react-native-svg';
+
+const useNativeDriver = Platform.OS !== 'web';
 
 /**
  * Hovedlogo - Jente med røde fletter (med valgfri bounce-animasjon)
@@ -27,12 +29,12 @@ export const Logo = ({ size = 120, animated = false, style }) => {
           Animated.timing(bounceAnim, {
             toValue: -6,
             duration: 1800,
-            useNativeDriver: true,
+            useNativeDriver,
           }),
           Animated.timing(bounceAnim, {
             toValue: 0,
             duration: 1800,
-            useNativeDriver: true,
+            useNativeDriver,
           }),
         ])
       ).start();

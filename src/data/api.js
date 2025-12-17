@@ -949,11 +949,16 @@ export const getSettings = async () => {
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+      if (data.kindergartenName === 'Solstråle Barnehage') {
+        await updateDoc(docRef, { kindergartenName: 'Eventyrhagen Barnehage' });
+        return { ...data, kindergartenName: 'Eventyrhagen Barnehage' };
+      }
+      return data;
     }
 
     const defaultSettings = {
-      kindergartenName: 'Solstråle Barnehage',
+      kindergartenName: 'Eventyrhagen Barnehage',
       kindergartenLogo: null,
       address: 'Barnehageveien 1, 0001 Oslo',
       phone: '22 33 44 55',

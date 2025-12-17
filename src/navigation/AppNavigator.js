@@ -5,13 +5,14 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions, AccessibilityInfo, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions, AccessibilityInfo, ScrollView, Modal } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -38,6 +39,81 @@ const isLargeScreen = width > 900;
 /** Minimum touch target størrelse for tilgjengelighet (44x44px per WCAG) */
 const MIN_TOUCH_TARGET = 44;
 
+// Language options
+const LANGUAGES = [
+  { code: 'nb', name: 'Norsk', countryCode: 'NO' },
+  { code: 'en', name: 'English', countryCode: 'GB' },
+  { code: 'ar', name: 'Arabic', countryCode: 'SA' },
+  { code: 'pl', name: 'Polski', countryCode: 'PL' },
+  { code: 'so', name: 'Soomaali', countryCode: 'SO' },
+  { code: 'ur', name: 'Urdu', countryCode: 'PK' },
+];
+
+// SVG Flag components
+const FlagNO = ({ size = 20 }) => (
+  <Svg width={size} height={size * 0.72} viewBox="0 0 22 16">
+    <Path d="M0 0h22v16H0z" fill="#BA0C2F" />
+    <Path d="M6 0h4v16H6z" fill="#fff" />
+    <Path d="M0 6h22v4H0z" fill="#fff" />
+    <Path d="M7 0h2v16H7z" fill="#00205B" />
+    <Path d="M0 7h22v2H0z" fill="#00205B" />
+  </Svg>
+);
+
+const FlagGB = ({ size = 20 }) => (
+  <Svg width={size} height={size * 0.6} viewBox="0 0 60 36">
+    <Path d="M0 0h60v36H0z" fill="#00247D" />
+    <Path d="M0 0l60 36M60 0L0 36" stroke="#fff" strokeWidth="6" />
+    <Path d="M0 0l60 36M60 0L0 36" stroke="#CF142B" strokeWidth="4" />
+    <Path d="M30 0v36M0 18h60" stroke="#fff" strokeWidth="10" />
+    <Path d="M30 0v36M0 18h60" stroke="#CF142B" strokeWidth="6" />
+  </Svg>
+);
+
+const FlagSA = ({ size = 20 }) => (
+  <Svg width={size} height={size * 0.67} viewBox="0 0 30 20">
+    <Path d="M0 0h30v20H0z" fill="#006C35" />
+    <Path d="M6 7h18v1H6zM8 10h14v1H8zM10 13h10v1H10z" fill="#fff" />
+  </Svg>
+);
+
+const FlagPL = ({ size = 20 }) => (
+  <Svg width={size} height={size * 0.625} viewBox="0 0 16 10">
+    <Path d="M0 0h16v5H0z" fill="#fff" />
+    <Path d="M0 5h16v5H0z" fill="#DC143C" />
+  </Svg>
+);
+
+const FlagSO = ({ size = 20 }) => (
+  <Svg width={size} height={size * 0.67} viewBox="0 0 30 20">
+    <Path d="M0 0h30v20H0z" fill="#4189DD" />
+    <Path d="M15 4l1.5 4.5h4.7l-3.8 2.8 1.4 4.5-3.8-2.8-3.8 2.8 1.4-4.5-3.8-2.8h4.7z" fill="#fff" />
+  </Svg>
+);
+
+const FlagPK = ({ size = 20 }) => (
+  <Svg width={size} height={size * 0.67} viewBox="0 0 30 20">
+    <Path d="M0 0h7.5v20H0z" fill="#fff" />
+    <Path d="M7.5 0h22.5v20H7.5z" fill="#01411C" />
+    <Circle cx="17" cy="10" r="4.5" fill="#fff" />
+    <Circle cx="18.5" cy="10" r="3.5" fill="#01411C" />
+    <Path d="M20 6l0.8 2.5 2.6 0-2.1 1.5 0.8 2.5-2.1-1.5-2.1 1.5 0.8-2.5-2.1-1.5 2.6 0z" fill="#fff" />
+  </Svg>
+);
+
+// Flag component selector
+const FlagIcon = ({ countryCode, size = 20 }) => {
+  switch (countryCode) {
+    case 'NO': return <FlagNO size={size} />;
+    case 'GB': return <FlagGB size={size} />;
+    case 'SA': return <FlagSA size={size} />;
+    case 'PL': return <FlagPL size={size} />;
+    case 'SO': return <FlagSO size={size} />;
+    case 'PK': return <FlagPK size={size} />;
+    default: return <FlagNO size={size} />;
+  }
+};
+
 /**
  * CustomHeader - Toppmeny med rollebasert navigasjon
  * @param {Object} props - Komponentprops
@@ -45,10 +121,11 @@ const MIN_TOUCH_TARGET = 44;
  * @param {string} props.currentRoute - Nåværende aktiv rute
  */
 const CustomHeader = ({ navigation, currentRoute }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // Dark mode colors
   const headerBg = isDark ? colors.dark.surface.default : colors.white;
@@ -63,6 +140,10 @@ const CustomHeader = ({ navigation, currentRoute }) => {
   const logoutBg = isDark ? 'rgba(248, 81, 73, 0.15)' : colors.red[50];
   const logoutBorder = isDark ? 'rgba(248, 81, 73, 0.3)' : colors.red[100];
   const themeToggleBg = isDark ? colors.dark.bg.tertiary : colors.neutral[100];
+  const modalBg = isDark ? colors.dark.surface.overlay : colors.white;
+  const modalBorder = isDark ? colors.dark.border.default : colors.neutral[200];
+  const modalTextColor = isDark ? colors.dark.text.primary : colors.neutral[800];
+  const modalSubtextColor = isDark ? colors.dark.text.secondary : colors.neutral[600];
 
   /**
    * Genererer navigasjonselementer basert på brukerens rolle
@@ -91,10 +172,18 @@ const CustomHeader = ({ navigation, currentRoute }) => {
   };
 
   const navItems = getNavItems();
+  const resolvedLanguage = (i18n.resolvedLanguage || i18n.language || 'nb').split('-')[0];
+  const currentLanguage = LANGUAGES.find(l => l.code === resolvedLanguage) || LANGUAGES[0];
+
+  const handleLanguageChange = (langCode) => {
+    i18n.changeLanguage(langCode);
+    setShowLanguageModal(false);
+  };
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top, backgroundColor: headerBg, borderBottomColor: headerBorder }]}>
-      <View style={styles.headerContent}>
+    <>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: headerBg, borderBottomColor: headerBorder }]}>
+        <View style={styles.headerContent}>
         {/* Logo - med accessibility */}
         <TouchableOpacity 
           style={styles.headerLogoContainer}
@@ -152,6 +241,21 @@ const CustomHeader = ({ navigation, currentRoute }) => {
 
         {/* User & Logout - med accessibility */}
         <View style={styles.headerRight}>
+          {/* Language toggle */}
+          <TouchableOpacity
+            style={[styles.languageToggle, { backgroundColor: themeToggleBg, borderColor: modalBorder }]}
+            onPress={() => setShowLanguageModal(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.language') || 'Språk'}
+            accessibilityHint="Trykk for ヂ velge sprЦk"
+          >
+            <FlagIcon countryCode={currentLanguage.countryCode} size={20} />
+            {isLargeScreen && (
+              <Ionicons name="chevron-down" size={14} color={modalSubtextColor} />
+            )}
+          </TouchableOpacity>
+
           {/* Dark mode toggle */}
           <TouchableOpacity
             style={[styles.themeToggle, { backgroundColor: themeToggleBg }]}
@@ -208,6 +312,51 @@ const CustomHeader = ({ navigation, currentRoute }) => {
         </View>
       </View>
     </View>
+
+    <Modal
+      visible={showLanguageModal}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={() => setShowLanguageModal(false)}
+    >
+      <TouchableOpacity
+        style={styles.languageModalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowLanguageModal(false)}
+      >
+        <View style={[styles.languageModal, { backgroundColor: modalBg, borderColor: modalBorder }]}>
+          <View style={styles.languageModalHeader}>
+            <Text style={[styles.languageModalTitle, { color: modalTextColor }]}>{t('settings.language') || 'Språk'}</Text>
+            <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+              <Ionicons name="close" size={22} color={modalSubtextColor} />
+            </TouchableOpacity>
+          </View>
+          {LANGUAGES.map((lang) => (
+            <TouchableOpacity
+              key={lang.code}
+              style={[
+                styles.languageOption,
+                { borderColor: modalBorder },
+                resolvedLanguage === lang.code && {
+                  backgroundColor: isDark ? colors.dark.primary.muted : colors.primary[50],
+                  borderColor: isDark ? colors.dark.primary.default : colors.primary[500],
+                },
+              ]}
+              onPress={() => handleLanguageChange(lang.code)}
+            >
+              <View style={styles.languageFlagContainer}>
+                <FlagIcon countryCode={lang.countryCode} size={24} />
+              </View>
+              <Text style={[styles.languageName, { color: modalTextColor }]}>{lang.name}</Text>
+              {resolvedLanguage === lang.code && (
+                <Ionicons name="checkmark-circle" size={20} color={isDark ? colors.dark.primary.default : colors.primary[500]} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  </>
   );
 };
 
@@ -454,6 +603,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  languageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: MIN_TOUCH_TARGET,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -539,6 +699,57 @@ const styles = StyleSheet.create({
   loadingSubtext: {
     fontSize: 16,
     color: colors.neutral[500],
+  },
+  languageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  languageModal: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  languageModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  languageModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  languageFlagContainer: {
+    width: 32,
+    height: 22,
+    borderRadius: 4,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languageName: {
+    fontSize: 14,
+    flex: 1,
+    fontWeight: '600',
   },
 });
 
