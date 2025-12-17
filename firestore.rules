@@ -1,0 +1,169 @@
+/**
+ * @fileoverview Firebase Security Rules for Henteklar
+ * 
+ * INSTRUKSJONER:
+ * 1. Gå til Firebase Console: https://console.firebase.google.com
+ * 2. Velg prosjektet "frostbyte-c7211"
+ * 3. Gå til Firestore Database -> Rules
+ * 4. Kopier innholdet nedenfor og lim inn
+ * 5. Klikk "Publish"
+ * 
+ * VIKTIG: Disse reglene implementerer RBAC (Role-Based Access Control)
+ * - Foreldre kan kun se egne barn + sjekke inn/ut
+ * - Ansatte/admin har full tilgang
+ * - All data krever autentisering
+ * - Logging er immutable (kun create)
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // HJELPEFUNKSJONER
+    // ============================================
+    
+    // Sjekk om bruker er innlogget
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Hent brukerens rolle fra users-collection
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Sjekk om bruker er admin
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    // Sjekk om bruker er ansatt (staff) eller admin
+    function isStaffOrAdmin() {
+      return isAuthenticated() && getUserRole() in ['admin', 'staff'];
+    }
+    
+    // Sjekk om bruker er forelder
+    function isParent() {
+      return isAuthenticated() && getUserRole() == 'parent';
+    }
+    
+    // Sjekk at forelder eier barnet (for checkinLogs)
+    function parentOwnsChild(childId) {
+      return isParent() && 
+             request.auth.uid in get(/databases/$(database)/documents/children/$(childId)).data.parentIds;
+    }
+    
+    // Sjekk at kun check-in/out felt endres (for foreldre)
+    function onlyCheckInOutFields() {
+      let allowed = ['isCheckedIn', 'checkedInAt', 'checkedOutAt', 'updatedAt'];
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+    
+    // ============================================
+    // BRUKERE (users)
+    // ============================================
+    match /users/{userId} {
+      // Lesing: Kun innloggede brukere kan lese
+      // Staff/admin kan lese alle, foreldre kan kun lese egen profil
+      allow read: if isAuthenticated() && 
+                    (isStaffOrAdmin() || request.auth.uid == userId);
+      
+      // Oppretting: Kun ved registrering (auth.uid må matche)
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Oppdatering: Brukere kan oppdatere egen profil, admin kan oppdatere alle
+      allow update: if isAuthenticated() && 
+                     (request.auth.uid == userId || isAdmin());
+      
+      // Sletting: Kun admin
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // BARN (children)
+    // ============================================
+    match /children/{childId} {
+      // Lesing: 
+      // - Staff/admin kan lese alle barn
+      // - Foreldre kan kun lese egne barn (basert på parentIds)
+      allow read: if isAuthenticated() && 
+                   (isStaffOrAdmin() || 
+                    (isParent() && request.auth.uid in resource.data.parentIds));
+      
+      // Oppretting: Kun staff/admin
+      allow create: if isStaffOrAdmin();
+      
+      // Oppdatering: 
+      // - Staff/admin kan oppdatere alt
+      // - Foreldre kan KUN oppdatere check-in/out felt for egne barn
+      allow update: if isStaffOrAdmin() || 
+                      (isParent() && 
+                       request.auth.uid in resource.data.parentIds &&
+                       onlyCheckInOutFields());
+      
+      // Sletting: Kun admin
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // INNSJEKKING-LOGGER (checkinLogs) - IMMUTABLE
+    // ============================================
+    match /checkinLogs/{logId} {
+      // Lesing: 
+      // - Staff/admin ser all historikk
+      // - Foreldre ser kun logger for egne barn
+      allow read: if isAuthenticated() && 
+                   (isStaffOrAdmin() || parentOwnsChild(resource.data.childId));
+      
+      // Oppretting: Staff/admin og foreldre (kun for egne barn)
+      allow create: if isAuthenticated() && 
+                     (isStaffOrAdmin() || parentOwnsChild(request.resource.data.childId));
+      
+      // Ingen oppdatering eller sletting - immutable log
+      allow update, delete: if false;
+    }
+    
+    // ============================================
+    // HISTORIKK (history) - IMMUTABLE
+    // Brukes kun for CRUD-operasjoner på barn (create/update/delete)
+    // ============================================
+    match /history/{historyId} {
+      allow read: if isAuthenticated() && isStaffOrAdmin();
+      allow create: if isStaffOrAdmin();
+      allow update, delete: if false;
+    }
+    
+    // ============================================
+    // KALENDER (calendarEvents)
+    // ============================================
+    match /calendarEvents/{eventId} {
+      // Lesing: Alle innloggede brukere
+      allow read: if isAuthenticated();
+      
+      // Oppretting/oppdatering: Kun staff/admin
+      allow create, update: if isStaffOrAdmin();
+      
+      // Sletting: Kun admin
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // INNSTILLINGER (settings)
+    // ============================================
+    match /settings/{settingId} {
+      // Lesing: Alle innloggede brukere
+      allow read: if isAuthenticated();
+      
+      // Skriving: Kun admin
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // STANDARD: Nekt alt annet
+    // ============================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
