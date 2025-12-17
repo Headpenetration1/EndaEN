@@ -953,11 +953,11 @@ export const getSettings = async () => {
     }
 
     const defaultSettings = {
-      kindergartenName: 'Solstråle Barnehage',
+      kindergartenName: 'Eventyrhagen Barnehage',
       kindergartenLogo: null,
       address: 'Barnehageveien 1, 0001 Oslo',
       phone: '22 33 44 55',
-      email: 'post@solstrale.no',
+      email: 'post@eventyrhagen.no',
       openingHours: {
         open: '07:00',
         close: '17:00',
