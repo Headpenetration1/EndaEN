@@ -74,7 +74,6 @@ const CustomHeader = ({ navigation, currentRoute }) => {
     if (user?.role === 'parent') {
       return [
         { name: 'MyChild', label: t('nav.myChild') || 'Mitt barn', icon: 'heart-outline' },
-        { name: 'CheckInOut', label: t('nav.checkInOut'), icon: 'checkmark-circle-outline' },
         { name: 'Calendar', label: t('nav.calendar') || 'Kalender', icon: 'calendar-outline' },
         { name: 'History', label: t('nav.history'), icon: 'time-outline' },
         { name: 'Settings', label: t('nav.settings'), icon: 'settings-outline' },
