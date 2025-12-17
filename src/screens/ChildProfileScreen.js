@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getChildById, getCheckInOutLogs, checkInChild, checkOutChild } from '../data/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Avatar, Button } from '../components';
 import { colors } from '../theme';
 
@@ -23,10 +24,31 @@ const isLargeScreen = width > 768;
 const ChildProfileScreen = ({ route, navigation }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const { id } = route.params;
   const [child, setChild] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const bgColor = isDark ? colors.dark.bg.primary : colors.neutral[50];
+  const cardBg = isDark ? colors.dark.surface.default : colors.white;
+  const textColor = isDark ? colors.dark.text.primary : colors.neutral[800];
+  const subtextColor = isDark ? colors.dark.text.secondary : colors.neutral[500];
+  const borderColor = isDark ? colors.dark.border.subtle : colors.neutral[100];
+  const mutedBg = isDark ? colors.dark.bg.tertiary : colors.neutral[100];
+  const primaryTint = isDark ? colors.dark.primary.default : colors.primary[600];
+  const primaryMuted = isDark ? colors.dark.primary.muted : colors.primary[50];
+  const successTint = isDark ? colors.dark.success.default : colors.success[600];
+  const successMuted = isDark ? colors.dark.success.muted : colors.success[50];
+  const dangerTint = isDark ? colors.dark.danger.default : colors.red[600];
+  const dangerMuted = isDark ? colors.dark.danger.muted : colors.red[50];
+  const accentTint = colors.accent[500];
+  const accentMuted = isDark ? colors.dark.danger.muted : colors.accent[50];
+  const checkedInGradient = isDark
+    ? [colors.dark.success.muted, colors.dark.success.default]
+    : [colors.success[400], colors.success[500]];
+  const checkedOutGradient = isDark
+    ? [colors.dark.bg.tertiary, colors.dark.bg.secondary]
+    : [colors.neutral[300], colors.neutral[400]];
 
   useEffect(() => {
     loadData();
@@ -49,18 +71,18 @@ const ChildProfileScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <Text style={styles.loadingText}>{t('loading')}</Text>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: bgColor }]}>
+        <Text style={[styles.loadingText, { color: subtextColor }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   if (!child) {
     return (
-      <View style={styles.container}>
-        <View style={styles.errorCard}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.neutral[300]} />
-          <Text style={styles.errorText}>{t('childProfile.notFound')}</Text>
+      <View style={[styles.container, { backgroundColor: bgColor }]}>
+        <View style={[styles.errorCard, { backgroundColor: cardBg, borderColor: borderColor, borderWidth: isDark ? 1 : 0 }]}>
+          <Ionicons name="alert-circle-outline" size={48} color={isDark ? colors.dark.text.muted : colors.neutral[300]} />
+          <Text style={[styles.errorText, { color: subtextColor }]}>{t('childProfile.notFound')}</Text>
           <TouchableOpacity style={styles.backButtonLarge} onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonLargeText}>{t('childProfile.backToOverview')}</Text>
           </TouchableOpacity>
@@ -108,30 +130,30 @@ const ChildProfileScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: bgColor }]} showsVerticalScrollIndicator={false}>
+      <View style={[styles.content, { backgroundColor: bgColor }]}>
         {/* Header with back and edit buttons */}
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color={colors.neutral[600]} />
-            <Text style={styles.backButtonText}>Tilbake</Text>
+            <Ionicons name="arrow-back" size={20} color={subtextColor} />
+            <Text style={[styles.backButtonText, { color: subtextColor }]}>Tilbake</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.editButton} 
+            style={[styles.editButton, { backgroundColor: primaryMuted }]} 
             onPress={() => navigation.navigate('EditChild', { childId: child.id })}
           >
-            <Ionicons name="create-outline" size={20} color={colors.primary[600]} />
-            <Text style={styles.editButtonText}>Rediger</Text>
+            <Ionicons name="create-outline" size={20} color={primaryTint} />
+            <Text style={[styles.editButtonText, { color: primaryTint }]}>Rediger</Text>
           </TouchableOpacity>
         </View>
 
         {/* Profile Header Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: cardBg, borderColor: isDark ? borderColor : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
           <LinearGradient
             colors={child.isCheckedIn 
-              ? [colors.success[400], colors.success[500]] 
-              : [colors.neutral[300], colors.neutral[400]]
+              ? checkedInGradient
+              : checkedOutGradient
             }
             style={styles.profileHeader}
             start={{ x: 0, y: 0 }}
@@ -141,7 +163,10 @@ const ChildProfileScreen = ({ route, navigation }) => {
               <Avatar initials={child.avatar} size="xlarge" />
               <View style={[
                 styles.statusIndicator,
-                child.isCheckedIn ? styles.statusActive : styles.statusInactive
+                { borderColor: isDark ? colors.dark.bg.primary : colors.white },
+                child.isCheckedIn
+                  ? { backgroundColor: isDark ? colors.dark.success.default : colors.success[500] }
+                  : { backgroundColor: isDark ? colors.dark.text.muted : colors.neutral[400] }
               ]}>
                 <Ionicons 
                   name={child.isCheckedIn ? "checkmark" : "close"} 
@@ -174,7 +199,7 @@ const ChildProfileScreen = ({ route, navigation }) => {
           </LinearGradient>
 
           {/* Action Button */}
-          <View style={styles.actionSection}>
+          <View style={[styles.actionSection, { borderTopColor: borderColor }]}>
             <TouchableOpacity
               style={[
                 styles.checkButton,
@@ -196,12 +221,12 @@ const ChildProfileScreen = ({ route, navigation }) => {
         </View>
 
         {/* Contact Information */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconContainer}>
-              <Ionicons name="people" size={20} color={colors.primary[600]} />
+        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: borderColor, borderWidth: isDark ? 1 : 0 }]}>
+          <View style={[styles.sectionHeader, { borderBottomColor: borderColor }]}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: primaryMuted }]}>
+              <Ionicons name="people" size={20} color={primaryTint} />
             </View>
-            <Text style={styles.sectionTitle}>Kontaktinformasjon</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Kontaktinformasjon</Text>
           </View>
 
           {child.parents && child.parents.map((parent, index) => (
@@ -209,53 +234,53 @@ const ChildProfileScreen = ({ route, navigation }) => {
               key={parent.id} 
               style={[
                 styles.parentCard,
-                index < child.parents.length - 1 && styles.parentCardBorder
+                index < child.parents.length - 1 && [styles.parentCardBorder, { borderBottomColor: borderColor }]
               ]}
             >
               <View style={styles.parentHeader}>
-                <View style={styles.parentAvatar}>
-                  <Text style={styles.parentAvatarText}>
+                <View style={[styles.parentAvatar, { backgroundColor: primaryMuted }]}>
+                  <Text style={[styles.parentAvatarText, { color: primaryTint }]}>
                     {parent.name.split(' ').map((n) => n[0]).join('').toUpperCase()}
                   </Text>
                 </View>
                 <View style={styles.parentInfo}>
                   <View style={styles.parentNameRow}>
-                    <Text style={styles.parentName}>{parent.name}</Text>
+                    <Text style={[styles.parentName, { color: textColor }]}>{parent.name}</Text>
                     {parent.isPrimary && (
-                      <View style={styles.primaryBadge}>
-                        <Ionicons name="star" size={10} color={colors.amber[700]} />
-                        <Text style={styles.primaryBadgeText}>Primær</Text>
+                      <View style={[styles.primaryBadge, { backgroundColor: isDark ? colors.amber[700] : colors.amber[100] }]}>
+                        <Ionicons name="star" size={10} color={isDark ? colors.dark.bg.primary : colors.amber[700]} />
+                        <Text style={[styles.primaryBadgeText, { color: isDark ? colors.dark.bg.primary : colors.amber[700] }]}>Primær</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={styles.parentRelation}>{parent.relation}</Text>
+                  <Text style={[styles.parentRelation, { color: subtextColor }]}>{parent.relation}</Text>
                 </View>
               </View>
 
               {/* Contact buttons */}
               <View style={styles.contactButtons}>
                 <TouchableOpacity 
-                  style={[styles.contactButton, styles.callButton]}
+                  style={[styles.contactButton, styles.callButton, { backgroundColor: successMuted, borderColor: isDark ? colors.dark.success.default : colors.success[200] }]}
                   onPress={() => handleCall(parent.phone)}
                 >
-                  <Ionicons name="call" size={18} color={colors.success[600]} />
-                  <Text style={styles.callButtonText}>Ring</Text>
+                  <Ionicons name="call" size={18} color={successTint} />
+                  <Text style={[styles.callButtonText, { color: successTint }]}>Ring</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.contactButton, styles.emailButton]}
+                  style={[styles.contactButton, styles.emailButton, { backgroundColor: primaryMuted, borderColor: isDark ? colors.dark.primary.default : colors.primary[200] }]}
                   onPress={() => handleEmail(parent.email, parent.name)}
                 >
-                  <Ionicons name="mail" size={18} color={colors.primary[600]} />
-                  <Text style={styles.emailButtonText}>Send e-post</Text>
+                  <Ionicons name="mail" size={18} color={primaryTint} />
+                  <Text style={[styles.emailButtonText, { color: primaryTint }]}>Send e-post</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.contactButton, styles.smsButton]}
+                  style={[styles.contactButton, styles.smsButton, { backgroundColor: accentMuted, borderColor: isDark ? colors.dark.danger.default : colors.accent[200] }]}
                   onPress={() => handleSMS(parent.phone, parent.name)}
                 >
-                  <Ionicons name="chatbubble" size={18} color={colors.accent[500]} />
-                  <Text style={styles.smsButtonText}>SMS</Text>
+                  <Ionicons name="chatbubble" size={18} color={accentTint} />
+                  <Text style={[styles.smsButtonText, { color: accentTint }]}>SMS</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -263,19 +288,19 @@ const ChildProfileScreen = ({ route, navigation }) => {
         </View>
 
         {/* Activity Log */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIconContainer, { backgroundColor: colors.primary[50] }]}>
-              <Ionicons name="time" size={20} color={colors.primary[600]} />
+        <View style={[styles.sectionCard, { backgroundColor: cardBg, borderColor: borderColor, borderWidth: isDark ? 1 : 0 }]}>
+          <View style={[styles.sectionHeader, { borderBottomColor: borderColor }]}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: primaryMuted }]}>
+              <Ionicons name="time" size={20} color={primaryTint} />
             </View>
-            <Text style={styles.sectionTitle}>Aktivitetslogg</Text>
-            <Text style={styles.sectionCount}>{logs.length} hendelser</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Aktivitetslogg</Text>
+            <Text style={[styles.sectionCount, { color: subtextColor }]}>{logs.length} hendelser</Text>
           </View>
 
           {logs.length === 0 ? (
             <View style={styles.emptyLogs}>
-              <Ionicons name="document-text-outline" size={32} color={colors.neutral[300]} />
-              <Text style={styles.emptyLogsText}>Ingen aktivitet registrert ennå</Text>
+              <Ionicons name="document-text-outline" size={32} color={isDark ? colors.dark.text.muted : colors.neutral[300]} />
+              <Text style={[styles.emptyLogsText, { color: subtextColor }]}>Ingen aktivitet registrert ennå</Text>
             </View>
           ) : (
             <View style={styles.logsContainer}>
@@ -284,26 +309,28 @@ const ChildProfileScreen = ({ route, navigation }) => {
                   key={log.id} 
                   style={[
                     styles.logItem,
-                    index < Math.min(logs.length, 10) - 1 && styles.logItemBorder
+                    index < Math.min(logs.length, 10) - 1 && [styles.logItemBorder, { borderBottomColor: borderColor }]
                   ]}
                 >
                   <View style={[
                     styles.logIcon,
-                    log.action === 'checkIn' ? styles.logIconIn : styles.logIconOut
+                    log.action === 'checkIn'
+                      ? { backgroundColor: successMuted }
+                      : { backgroundColor: dangerMuted }
                   ]}>
                     <Ionicons 
                       name={log.action === 'checkIn' ? 'log-in' : 'log-out'} 
                       size={16} 
-                      color={log.action === 'checkIn' ? colors.success[600] : colors.red[600]} 
+                      color={log.action === 'checkIn' ? successTint : dangerTint} 
                     />
                   </View>
                   <View style={styles.logContent}>
-                    <Text style={styles.logAction}>
+                    <Text style={[styles.logAction, { color: textColor }]}>
                       {log.action === 'checkIn' ? 'Sjekket inn' : 'Sjekket ut'}
                     </Text>
-                    <Text style={styles.logTime}>{formatLogTime(log.timestamp)}</Text>
+                    <Text style={[styles.logTime, { color: subtextColor }]}>{formatLogTime(log.timestamp)}</Text>
                   </View>
-                  <Text style={styles.logPerformer}>{log.performedBy}</Text>
+                  <Text style={[styles.logPerformer, { color: subtextColor, backgroundColor: mutedBg }]}>{log.performedBy}</Text>
                 </View>
               ))}
             </View>

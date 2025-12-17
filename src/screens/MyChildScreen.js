@@ -17,12 +17,13 @@ import {
   Animated,
   useWindowDimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path, G, Defs, LinearGradient as SvgGradient, Stop, Ellipse } from 'react-native-svg';
-import { getChildrenForParent, checkInChild, checkOutChild } from '../data/api';
+import { getChildrenForParent, checkInChild, checkOutChild, getSettings } from '../data/api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Avatar, Card } from '../components';
@@ -30,6 +31,7 @@ import { colors } from '../theme';
 
 /** Minimum touch target for tilgjengelighet (WCAG 2.1) */
 const MIN_TOUCH_TARGET = 44;
+const useNativeDriver = Platform.OS !== 'web';
 
 /**
  * Animert boble-komponent for bakgrunnsdekorasjon
@@ -45,13 +47,13 @@ const FloatingBubble = ({ size, initialX, initialY, duration, delay, color = 'wh
         Animated.timing(translateY, {
           toValue: -15,
           duration: duration,
-          useNativeDriver: true,
+          useNativeDriver,
           delay: delay,
         }),
         Animated.timing(translateY, {
           toValue: 0,
           duration: duration,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     );
@@ -61,13 +63,13 @@ const FloatingBubble = ({ size, initialX, initialY, duration, delay, color = 'wh
         Animated.timing(scale, {
           toValue: 1.1,
           duration: duration * 0.8,
-          useNativeDriver: true,
+          useNativeDriver,
           delay: delay + 200,
         }),
         Animated.timing(scale, {
           toValue: 0.95,
           duration: duration * 0.8,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     );
@@ -119,13 +121,13 @@ const TwinkleStar = ({ x, y, size = 3, delay = 0 }) => {
         Animated.timing(opacity, {
           toValue: 1,
           duration: 1500,
-          useNativeDriver: true,
+          useNativeDriver,
           delay: delay,
         }),
         Animated.timing(opacity, {
           toValue: 0.3,
           duration: 1500,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     ).start();
@@ -159,12 +161,12 @@ const FamilyIllustration = ({ size = 120 }) => {
         Animated.timing(bounceAnim, {
           toValue: -5,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(bounceAnim, {
           toValue: 0,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     ).start();
@@ -237,6 +239,7 @@ const MyChildScreen = ({ navigation }) => {
   const isSmallScreen = width < 380;
   
   const [children, setChildren] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // Holder styr på hvilken knapp som laster
@@ -261,8 +264,12 @@ const MyChildScreen = ({ navigation }) => {
   const loadMyChildren = async () => {
     try {
       console.log('👨‍👩‍👧 MyChildScreen: Henter barn for', user?.email);
-      const myChildren = await getChildrenForParent(user?.email);
+      const [myChildren, settingsData] = await Promise.all([
+        getChildrenForParent(user?.email),
+        getSettings(),
+      ]);
       setChildren(myChildren);
+      setSettings(settingsData);
       console.log('✅ Fant', myChildren.length, 'barn');
     } catch (error) {
       console.error('❌ Feil ved henting av barn:', error);
@@ -544,6 +551,12 @@ const MyChildScreen = ({ navigation }) => {
                 {t('myChild.hello')}, {user?.name?.split(' ')[0]}!
               </Text>
               <Text style={styles.heroDate}>{getFormattedDate()}</Text>
+              {settings?.kindergartenName && (
+                <View style={styles.heroKindergartenRow}>
+                  <Ionicons name="business" size={14} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.heroKindergartenName}>{settings.kindergartenName}</Text>
+                </View>
+              )}
               
               <View style={styles.heroTitleRow}>
                 <View style={styles.heroTitleBadge}>
@@ -686,7 +699,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
     textTransform: 'capitalize',
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  heroKindergartenRow: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginBottom: 12,
+  },
+  heroKindergartenName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.95)',
   },
   heroTitleRow: {
     flexDirection: 'row',

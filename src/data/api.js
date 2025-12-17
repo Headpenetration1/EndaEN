@@ -950,7 +950,9 @@ export const getSettings = async () => {
 
     if (docSnap.exists()) {
       const data = docSnap.data();
-      if (data.kindergartenName === 'Solstråle Barnehage') {
+      const name = typeof data.kindergartenName === 'string' ? data.kindergartenName : '';
+      const normalized = name.toLowerCase();
+      if (normalized.includes('solstråle') || normalized.includes('solstrale')) {
         await updateDoc(docRef, { kindergartenName: 'Eventyrhagen Barnehage' });
         return { ...data, kindergartenName: 'Eventyrhagen Barnehage' };
       }
