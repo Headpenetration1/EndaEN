@@ -949,11 +949,18 @@ export const getSettings = async () => {
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+      const name = typeof data.kindergartenName === 'string' ? data.kindergartenName : '';
+      const normalized = name.toLowerCase();
+      if (normalized.includes('solstråle') || normalized.includes('solstrale')) {
+        await updateDoc(docRef, { kindergartenName: 'Eventyrhagen Barnehage' });
+        return { ...data, kindergartenName: 'Eventyrhagen Barnehage' };
+      }
+      return data;
     }
 
     const defaultSettings = {
-      kindergartenName: 'Solstråle Barnehage',
+      kindergartenName: 'Eventyrhagen Barnehage',
       kindergartenLogo: null,
       address: 'Barnehageveien 1, 0001 Oslo',
       phone: '22 33 44 55',

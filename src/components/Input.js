@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme';
 
 const Input = ({
@@ -17,22 +18,32 @@ const Input = ({
   inputStyle,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const { isDark } = useTheme();
+
+  const labelColor = isDark ? colors.dark.text.secondary : colors.neutral[700];
+  const inputBg = isDark ? colors.dark.bg.tertiary : colors.white;
+  const borderColor = isDark ? colors.dark.border.default : colors.neutral[200];
+  const textColor = isDark ? colors.dark.text.primary : colors.neutral[800];
+  const placeholderColor = isDark ? colors.dark.text.placeholder : colors.neutral[400];
+  const focusBorder = isDark ? colors.dark.primary.default : colors.primary[400];
+  const errorColor = isDark ? colors.dark.danger.default : colors.red[600];
 
   return (
     <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: labelColor }]}>{label}</Text>}
       <View
         style={[
           styles.inputContainer,
-          isFocused && styles.inputFocused,
-          error && styles.inputError,
+          { backgroundColor: inputBg, borderColor },
+          isFocused && { borderColor: focusBorder, borderWidth: 2 },
+          error && { borderColor: isDark ? colors.dark.danger.default : colors.red[500] },
         ]}
       >
         {icon && <View style={styles.iconContainer}>{icon}</View>}
         <TextInput
-          style={[styles.input, icon && styles.inputWithIcon, inputStyle]}
+          style={[styles.input, icon && styles.inputWithIcon, { color: textColor }, inputStyle]}
           placeholder={placeholder}
-          placeholderTextColor={colors.neutral[400]}
+          placeholderTextColor={placeholderColor}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={secureTextEntry}
@@ -43,7 +54,7 @@ const Input = ({
           onBlur={() => setIsFocused(false)}
         />
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: errorColor }]}>{error}</Text>}
     </View>
   );
 };
@@ -55,24 +66,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.neutral[700],
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.neutral[200],
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  inputFocused: {
-    borderColor: colors.primary[400],
-    borderWidth: 2,
-  },
-  inputError: {
-    borderColor: colors.red[500],
   },
   iconContainer: {
     paddingLeft: 16,
@@ -82,14 +83,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: colors.neutral[800],
   },
   inputWithIcon: {
     paddingLeft: 12,
   },
   errorText: {
     fontSize: 14,
-    color: colors.red[600],
     marginTop: 4,
   },
 });
